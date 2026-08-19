@@ -9,6 +9,8 @@ from .const import ACCEPT_LANGUAGE, BASE_URL, CLIENT_ID
 
 _LOGGER = logging.getLogger(__name__)
 
+TIMEOUT = aiohttp.ClientTimeout(total=10)
+
 
 class AnioApiError(Exception):
     """General Anio API Exception."""
@@ -57,7 +59,7 @@ class AnioApiClient:
         }
         try:
             async with self._session.post(
-                url, json=payload, headers=self._headers
+                url, json=payload, headers=self._headers, timeout=TIMEOUT
             ) as resp:
                 if resp.status in (401, 403):
                     raise AnioAuthError("Ungültige E-Mail-Adresse oder Passwort.")
@@ -79,7 +81,9 @@ class AnioApiClient:
             headers["Authorization"] = f"Bearer {self._refresh_token}"
 
         try:
-            async with self._session.post(url, headers=headers) as resp:
+            async with self._session.post(
+                url, headers=headers, timeout=TIMEOUT
+            ) as resp:
                 if resp.status in (401, 403):
                     await self.async_login()
                     return
@@ -103,7 +107,7 @@ class AnioApiClient:
         for attempt in range(2):
             try:
                 async with self._session.request(
-                    method, url, headers=self._headers, **kwargs
+                    method, url, headers=self._headers, timeout=TIMEOUT, **kwargs
                 ) as resp:
                     if resp.status == 401 and attempt == 0:
                         _LOGGER.debug("Token abgelaufen, erneuere Token...")

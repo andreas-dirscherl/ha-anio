@@ -93,7 +93,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
     )
 
-    await coordinator.async_config_entry_first_refresh()
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except Exception as err:
+        _LOGGER.warning("Erster DataRefresh fehlgeschlagen (Setup läuft trotzdem weiter): %s", err)
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         "api": api,
