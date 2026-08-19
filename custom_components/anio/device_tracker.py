@@ -62,21 +62,57 @@ class AnioDeviceTracker(CoordinatorEntity, TrackerEntity):
     @property
     def latitude(self) -> float | None:
         """Return latitude value of the device."""
-        loc = self.coordinator.data.get(self._device_id, {}).get("location", {})
-        lat = loc.get("lat") or loc.get("latitude")
-        return float(lat) if lat is not None else None
+        loc = self.coordinator.data.get(self._device_id, {}).get("location") or {}
+        pos = loc.get("position")
+        if isinstance(pos, (list, tuple)) and len(pos) >= 2:
+            try:
+                return float(pos[0])
+            except (ValueError, TypeError):
+                pass
+        if isinstance(pos, dict):
+            lat = pos.get("latitude") or pos.get("lat")
+            if lat is not None:
+                try:
+                    return float(lat)
+                except (ValueError, TypeError):
+                    pass
+        lat = loc.get("latitude") or loc.get("lat")
+        if lat is not None:
+            try:
+                return float(lat)
+            except (ValueError, TypeError):
+                pass
+        return None
 
     @property
     def longitude(self) -> float | None:
         """Return longitude value of the device."""
-        loc = self.coordinator.data.get(self._device_id, {}).get("location", {})
-        lon = loc.get("lng") or loc.get("longitude")
-        return float(lon) if lon is not None else None
+        loc = self.coordinator.data.get(self._device_id, {}).get("location") or {}
+        pos = loc.get("position")
+        if isinstance(pos, (list, tuple)) and len(pos) >= 2:
+            try:
+                return float(pos[1])
+            except (ValueError, TypeError):
+                pass
+        if isinstance(pos, dict):
+            lon = pos.get("longitude") or pos.get("lng")
+            if lon is not None:
+                try:
+                    return float(lon)
+                except (ValueError, TypeError):
+                    pass
+        lon = loc.get("longitude") or loc.get("lng")
+        if lon is not None:
+            try:
+                return float(lon)
+            except (ValueError, TypeError):
+                pass
+        return None
 
     @property
     def location_accuracy(self) -> int:
         """Return the location accuracy of the device in meters."""
-        loc = self.coordinator.data.get(self._device_id, {}).get("location", {})
+        loc = self.coordinator.data.get(self._device_id, {}).get("location") or {}
         return loc.get("accuracy", 20)
 
     @property
@@ -87,10 +123,11 @@ class AnioDeviceTracker(CoordinatorEntity, TrackerEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return device tracker attributes."""
-        loc = self.coordinator.data.get(self._device_id, {}).get("location", {})
+        loc = self.coordinator.data.get(self._device_id, {}).get("location") or {}
         return {
             "address": loc.get("address"),
-            "location_type": loc.get("type"),
-            "updated_at": loc.get("createdAt") or loc.get("timestamp"),
-            "battery": loc.get("battery"),
+            "location_type": loc.get("positionDeterminedBy") or loc.get("locatingType") or loc.get("type"),
+            "updated_at": loc.get("date") or loc.get("updatedAt") or loc.get("createdAt"),
+            "battery_level": loc.get("batteryLevel"),
+            "signal_strength": loc.get("signalStrength"),
         }

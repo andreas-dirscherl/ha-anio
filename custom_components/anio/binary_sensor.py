@@ -63,41 +63,56 @@ class AnioBaseBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
 
 class AnioOnlineBinarySensor(AnioBaseBinarySensor):
-    """Online status binary sensor for Anio Smartwatch."""
+    """Binary sensor for watch online status."""
 
     _attr_name = "Online"
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
 
     def __init__(self, coordinator: DataUpdateCoordinator, device_id: str) -> None:
-        """Initialize online sensor."""
+        """Initialize online binary sensor."""
         super().__init__(coordinator, device_id)
         self._attr_unique_id = f"anio_online_{device_id}"
 
     @property
-    def is_on(self) -> bool | None:
-        """Return true if device is online."""
-        det = self.coordinator.data.get(self._device_id, {}).get("detail", {})
-        info = self.coordinator.data.get(self._device_id, {}).get("info", {})
-        online = det.get("online") if det.get("online") is not None else info.get("online")
-        if online is None:
-            return True
-        return bool(online)
+    def is_on(self) -> bool:
+        """Return true if device is connected."""
+        data = self.coordinator.data.get(self._device_id, {})
+        loc = data.get("location") or {}
+        det = data.get("detail") or {}
+        info = data.get("info") or {}
+
+        for src in (loc, det, info):
+            for key in ("online", "isOnline", "connected", "state"):
+                val = src.get(key)
+                if val is not None:
+                    if isinstance(val, str):
+                        return val.lower() in ("online", "connected", "true", "1")
+                    return bool(val)
+        return True
 
 
 class AnioChargingBinarySensor(AnioBaseBinarySensor):
-    """Charging status binary sensor for Anio Smartwatch."""
+    """Binary sensor for battery charging status."""
 
     _attr_name = "Wird geladen"
     _attr_device_class = BinarySensorDeviceClass.BATTERY_CHARGING
 
     def __init__(self, coordinator: DataUpdateCoordinator, device_id: str) -> None:
-        """Initialize charging sensor."""
+        """Initialize charging binary sensor."""
         super().__init__(coordinator, device_id)
         self._attr_unique_id = f"anio_charging_{device_id}"
 
     @property
     def is_on(self) -> bool | None:
-        """Return true if device is charging."""
-        det = self.coordinator.data.get(self._device_id, {}).get("detail", {})
-        charging = det.get("charging") or det.get("isCharging")
-        return bool(charging) if charging is not None else None
+        """Return true if battery is charging."""
+        data = self.coordinator.data.get(self._device_id, {})
+        loc = data.get("location") or {}
+        det = data.get("detail") or {}
+        info = data.get("info") or {}
+
+        for src in (loc, det, info):
+            for key in ("charging", "isCharging", "is_charging", "batteryCharging"):
+                val = src.get(key)
+                if val is not None:
+                    return bool(val)
+        return False

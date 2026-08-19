@@ -82,10 +82,20 @@ class AnioBatterySensor(AnioBaseSensor):
     @property
     def native_value(self) -> int | None:
         """Return native value of battery."""
-        loc = self.coordinator.data.get(self._device_id, {}).get("location", {})
-        det = self.coordinator.data.get(self._device_id, {}).get("detail", {})
-        bat = loc.get("battery") if loc.get("battery") is not None else det.get("battery")
-        return int(bat) if bat is not None else None
+        data = self.coordinator.data.get(self._device_id, {})
+        loc = data.get("location") or {}
+        det = data.get("detail") or {}
+        info = data.get("info") or {}
+
+        for src in (loc, det, info):
+            for key in ("batteryLevel", "battery", "battery_level", "batteryVal"):
+                val = src.get(key)
+                if val is not None:
+                    try:
+                        return int(val)
+                    except (ValueError, TypeError):
+                        pass
+        return None
 
 
 class AnioSignalSensor(AnioBaseSensor):
@@ -104,9 +114,20 @@ class AnioSignalSensor(AnioBaseSensor):
     @property
     def native_value(self) -> int | None:
         """Return signal strength value."""
-        det = self.coordinator.data.get(self._device_id, {}).get("detail", {})
-        sig = det.get("signal") or det.get("gsmSignal")
-        return int(sig) if sig is not None else None
+        data = self.coordinator.data.get(self._device_id, {})
+        loc = data.get("location") or {}
+        det = data.get("detail") or {}
+        info = data.get("info") or {}
+
+        for src in (loc, det, info):
+            for key in ("signalStrength", "signal", "gsmSignal", "signal_strength"):
+                val = src.get(key)
+                if val is not None:
+                    try:
+                        return int(val)
+                    except (ValueError, TypeError):
+                        pass
+        return None
 
 
 class AnioTrackingModeSensor(AnioBaseSensor):
@@ -123,5 +144,14 @@ class AnioTrackingModeSensor(AnioBaseSensor):
     @property
     def native_value(self) -> str | None:
         """Return current tracking mode."""
-        det = self.coordinator.data.get(self._device_id, {}).get("detail", {})
-        return det.get("trackingMode") or "Standard"
+        data = self.coordinator.data.get(self._device_id, {})
+        loc = data.get("location") or {}
+        det = data.get("detail") or {}
+
+        for src in (loc, det):
+            mode = src.get("trackingMode")
+            if mode:
+                if isinstance(mode, dict):
+                    return mode.get("name") or mode.get("type") or str(mode)
+                return str(mode)
+        return "Standard"
