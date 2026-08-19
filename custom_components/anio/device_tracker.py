@@ -37,6 +37,7 @@ class AnioDeviceTracker(CoordinatorEntity, TrackerEntity):
 
     _attr_has_entity_name = True
     _attr_name = None
+    _attr_icon = "mdi:smartwatch"
 
     def __init__(self, coordinator: DataUpdateCoordinator, device_id: str) -> None:
         """Initialize the device tracker."""
