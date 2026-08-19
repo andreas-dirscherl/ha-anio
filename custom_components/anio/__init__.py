@@ -1,6 +1,7 @@
 """The Anio Smartwatch integration."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 from typing import Any
@@ -43,7 +44,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return False
 
     async def async_update_data() -> dict[str, Any]:
-        """Fetch data from Anio Cloud."""
+        """Fetch data from Anio Cloud concurrently."""
         try:
             devices = await api.async_get_devices()
             data: dict[str, dict[str, Any]] = {}
@@ -53,30 +54,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 if not device_id:
                     continue
 
-                detail = {}
-                location = {}
-                silence_times = []
+                results = await asyncio.gather(
+                    api.async_get_device_detail(device_id),
+                    api.async_get_location(device_id),
+                    api.async_get_silence_times(device_id),
+                    return_exceptions=True,
+                )
 
-                try:
-                    detail = await api.async_get_device_detail(device_id)
-                except Exception as err:
-                    _LOGGER.warning("Fehler beim Abrufen der Details für %s: %s", device_id, err)
-
-                try:
-                    location = await api.async_get_location(device_id)
-                except Exception as err:
-                    _LOGGER.warning("Fehler beim Abrufen des Standorts für %s: %s", device_id, err)
-
-                try:
-                    silence_times = await api.async_get_silence_times(device_id)
-                except Exception as err:
-                    _LOGGER.warning("Fehler beim Abrufen der Ruhezeiten für %s: %s", device_id, err)
+                detail = results[0] if not isinstance(results[0], Exception) else {}
+                location = results[1] if not isinstance(results[1], Exception) else {}
+                silence_times = results[2] if not isinstance(results[2], Exception) else []
 
                 data[device_id] = {
                     "info": dev,
-                    "detail": detail,
-                    "location": location,
-                    "silence_times": silence_times,
+                    "detail": detail if isinstance(detail, dict) else {},
+                    "location": location if isinstance(location, dict) else {},
+                    "silence_times": silence_times if isinstance(silence_times, list) else [],
                 }
 
             return data
