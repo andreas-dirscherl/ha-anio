@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Anio Smartwatch Anmelden",
+        "description": "Gib deine Anio Cloud Anmeldedaten ein.",
+        "data": {
+          "email": "E-Mail-Adresse",
+          "password": "Passwort"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zum Anio Server fehlgeschlagen.",
+      "invalid_auth": "Ungültige E-Mail-Adresse oder Passwort.",
+      "unknown": "Unerwarteter Fehler aufgetreten."
+    },
+    "abort": {
+      "already_configured": "Dieses Anio Konto ist bereits konfiguriert."
+    }
+  }
+}

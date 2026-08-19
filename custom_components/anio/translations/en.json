@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Anio Smartwatch Login",
+        "description": "Enter your Anio Cloud credentials.",
+        "data": {
+          "email": "Email address",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to Anio server.",
+      "invalid_auth": "Invalid email address or password.",
+      "unknown": "Unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This Anio account is already configured."
+    }
+  }
+}

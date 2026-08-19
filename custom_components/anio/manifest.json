@@ -1,0 +1,12 @@
+{
+  "domain": "anio",
+  "name": "Anio Smartwatch",
+  "codeowners": ["@andreas-dirscherl"],
+  "config_flow": true,
+  "documentation": "https://github.com/andreas-dirscherl/ha-anio",
+  "integration_type": "device",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/andreas-dirscherl/ha-anio/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}
