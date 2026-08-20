@@ -2,21 +2,32 @@
   "config": {
     "step": {
       "user": {
-        "title": "Anio Smartwatch Anmelden",
-        "description": "Gib deine Anio Cloud Anmeldedaten ein.",
+        "title": "Connect Anio Smartwatch",
+        "description": "Please enter your Anio Cloud credentials.",
         "data": {
-          "email": "E-Mail-Adresse",
-          "password": "Passwort"
+          "email": "Email",
+          "password": "Password"
         }
       }
     },
     "error": {
-      "cannot_connect": "Verbindung zum Anio Server fehlgeschlagen.",
-      "invalid_auth": "Ungültige E-Mail-Adresse oder Passwort.",
-      "unknown": "Unerwarteter Fehler aufgetreten."
+      "invalid_auth": "Invalid email or password.",
+      "cannot_connect": "Failed to connect to Anio Cloud.",
+      "unknown": "Unexpected error occurred."
     },
     "abort": {
-      "already_configured": "Dieses Anio Konto ist bereits konfiguriert."
+      "already_configured": "This Anio account is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Anio Settings",
+        "description": "Adjust the polling interval in seconds (e.g. 120 for 2 minutes).",
+        "data": {
+          "scan_interval": "Polling Interval (seconds)"
+        }
+      }
     }
   }
 }

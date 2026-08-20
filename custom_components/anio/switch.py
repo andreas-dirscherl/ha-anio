@@ -27,6 +27,10 @@ async def async_setup_entry(
     coordinator: DataUpdateCoordinator = entry_data["coordinator"]
     api: AnioApiClient = entry_data["api"]
 
+    if not coordinator.data or not isinstance(coordinator.data, dict):
+        _LOGGER.debug("Keine Koordinatordaten vorhanden für Switch-Setup")
+        return
+
     entities = []
     for device_id in coordinator.data:
         entities.append(AnioSilenceTimeSwitch(coordinator, api, device_id))
@@ -56,7 +60,11 @@ class AnioSilenceTimeSwitch(CoordinatorEntity, SwitchEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
-        info = self.coordinator.data.get(self._device_id, {}).get("info", {})
+        info = (
+            self.coordinator.data.get(self._device_id, {}).get("info", {})
+            if self.coordinator.data
+            else {}
+        )
         device_name = info.get("name") or info.get("deviceName") or f"Anio Watch {self._device_id}"
         model = info.get("model") or "Anio 6"
 
@@ -70,6 +78,8 @@ class AnioSilenceTimeSwitch(CoordinatorEntity, SwitchEntity):
     @property
     def is_on(self) -> bool | None:
         """Return true if silence time is enabled."""
+        if not self.coordinator.data:
+            return False
         silence_times = self.coordinator.data.get(self._device_id, {}).get("silence_times", [])
         if not silence_times:
             return False

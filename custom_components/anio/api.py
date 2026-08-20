@@ -1,7 +1,8 @@
 """API Client for Anio Smartwatch Cloud."""
+import asyncio
 import logging
 import uuid
-from typing import Any
+from typing import Any, Callable
 
 import aiohttp
 
@@ -28,14 +29,19 @@ class AnioApiClient:
         email: str,
         password: str,
         session: aiohttp.ClientSession,
+        access_token: str | None = None,
+        refresh_token: str | None = None,
+        app_uuid: str | None = None,
+        on_tokens_updated: Callable[[str, str | None, str], None] | None = None,
     ) -> None:
         """Initialize the API client."""
         self._email = email
         self._password = password
         self._session = session
-        self._access_token: str | None = None
-        self._refresh_token: str | None = None
-        self._app_uuid = str(uuid.uuid4())
+        self._access_token = access_token
+        self._refresh_token = refresh_token
+        self._app_uuid = app_uuid or str(uuid.uuid4())
+        self._on_tokens_updated = on_tokens_updated
 
     @property
     def _headers(self) -> dict[str, str]:
@@ -49,6 +55,14 @@ class AnioApiClient:
         if self._access_token:
             headers["Authorization"] = f"Bearer {self._access_token}"
         return headers
+
+    def _notify_tokens_updated() -> None:
+        """Notify listener if tokens changed."""
+        if self._on_tokens_updated and self._access_token:
+            try:
+                self._on_tokens_updated(self._access_token, self._refresh_token, self._app_uuid)
+            except Exception as err:
+                _LOGGER.warning("Fehler beim Speichern der Anio Tokens: %s", err)
 
     async def async_login(self) -> dict[str, Any]:
         """Authenticate with email and password."""
@@ -65,36 +79,44 @@ class AnioApiClient:
                     raise AnioAuthError("Ungültige E-Mail-Adresse oder Passwort.")
                 if resp.status != 200:
                     text = await resp.text()
-                    raise AnioApiError(f"Login fehlgeschlagen ({resp.status}): {text}")
+                    raise AnioApiError(f"Login fehlgeschlagen (HTTP {resp.status}): {text}")
                 data = await resp.json()
                 self._access_token = data.get("accessToken")
                 self._refresh_token = data.get("refreshToken")
+                self._notify_tokens_updated()
                 return data
-        except aiohttp.ClientError as err:
+        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise AnioApiError(f"Netzwerkfehler beim Anmelden: {err}") from err
 
     async def async_refresh_token(self) -> None:
         """Refresh access token using refresh token."""
+        if not self._refresh_token:
+            await self.async_login()
+            return
+
         url = f"{BASE_URL}/v1/auth/refresh-access-token"
         headers = self._headers
-        if self._refresh_token:
-            headers["Authorization"] = f"Bearer {self._refresh_token}"
+        headers["Authorization"] = f"Bearer {self._refresh_token}"
 
         try:
             async with self._session.post(
                 url, headers=headers, timeout=TIMEOUT
             ) as resp:
                 if resp.status in (401, 403):
+                    _LOGGER.debug("Refresh Token abgelaufen (HTTP %s), versuche neuen Login...", resp.status)
                     await self.async_login()
                     return
                 if resp.status != 200:
+                    _LOGGER.warning("Token Refresh fehlgeschlagen (HTTP %s), versuche neuen Login...", resp.status)
                     await self.async_login()
                     return
                 data = await resp.json()
                 self._access_token = data.get("accessToken")
-                if "refreshToken" in data:
+                if "refreshToken" in data and data["refreshToken"]:
                     self._refresh_token = data.get("refreshToken")
-        except Exception:
+                self._notify_tokens_updated()
+        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+            _LOGGER.warning("Netzwerkfehler beim Token-Refresh: %s. Versuche Login...", err)
             await self.async_login()
 
     async def _request(self, method: str, endpoint: str, **kwargs: Any) -> Any:
@@ -109,10 +131,12 @@ class AnioApiClient:
                 async with self._session.request(
                     method, url, headers=self._headers, timeout=TIMEOUT, **kwargs
                 ) as resp:
-                    if resp.status == 401 and attempt == 0:
-                        _LOGGER.debug("Token abgelaufen, erneuere Token...")
+                    if resp.status in (401, 403) and attempt == 0:
+                        _LOGGER.debug("Token abgelaufen (HTTP %s), erneuere Token...", resp.status)
                         await self.async_refresh_token()
                         continue
+                    if resp.status in (401, 403):
+                        raise AnioAuthError(f"Authentifizierungsfehler bei {endpoint} (HTTP {resp.status})")
                     if resp.status not in (200, 201, 204):
                         text = await resp.text()
                         raise AnioApiError(
@@ -121,7 +145,7 @@ class AnioApiClient:
                     if resp.status == 204:
                         return None
                     return await resp.json()
-            except aiohttp.ClientError as err:
+            except (aiohttp.ClientError, asyncio.TimeoutError) as err:
                 raise AnioApiError(f"Netzwerkfehler bei {endpoint}: {err}") from err
 
         raise AnioAuthError("Authentifizierung nach Wiederholung fehlgeschlagen.")

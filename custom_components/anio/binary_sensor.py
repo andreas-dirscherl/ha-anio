@@ -27,6 +27,10 @@ async def async_setup_entry(
     entry_data = hass.data[DOMAIN][entry.entry_id]
     coordinator: DataUpdateCoordinator = entry_data["coordinator"]
 
+    if not coordinator.data or not isinstance(coordinator.data, dict):
+        _LOGGER.debug("Keine Koordinatordaten vorhanden für BinarySensor-Setup")
+        return
+
     entities = []
     for device_id in coordinator.data:
         entities.extend([
@@ -50,7 +54,11 @@ class AnioBaseBinarySensor(CoordinatorEntity, BinarySensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
-        info = self.coordinator.data.get(self._device_id, {}).get("info", {})
+        info = (
+            self.coordinator.data.get(self._device_id, {}).get("info", {})
+            if self.coordinator.data
+            else {}
+        )
         device_name = info.get("name") or info.get("deviceName") or f"Anio Watch {self._device_id}"
         model = info.get("model") or "Anio 6"
 
@@ -76,6 +84,8 @@ class AnioOnlineBinarySensor(AnioBaseBinarySensor):
     @property
     def is_on(self) -> bool:
         """Return true if device is connected."""
+        if not self.coordinator.data:
+            return True
         data = self.coordinator.data.get(self._device_id, {})
         loc = data.get("location") or {}
         det = data.get("detail") or {}
@@ -105,6 +115,8 @@ class AnioChargingBinarySensor(AnioBaseBinarySensor):
     @property
     def is_on(self) -> bool | None:
         """Return true if battery is charging."""
+        if not self.coordinator.data:
+            return False
         data = self.coordinator.data.get(self._device_id, {})
         loc = data.get("location") or {}
         det = data.get("detail") or {}

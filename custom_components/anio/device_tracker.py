@@ -25,6 +25,10 @@ async def async_setup_entry(
     entry_data = hass.data[DOMAIN][entry.entry_id]
     coordinator: DataUpdateCoordinator = entry_data["coordinator"]
 
+    if not coordinator.data or not isinstance(coordinator.data, dict):
+        _LOGGER.debug("Keine Koordinatordaten vorhanden für DeviceTracker-Setup")
+        return
+
     entities = []
     for device_id in coordinator.data:
         entities.append(AnioDeviceTracker(coordinator, device_id))
@@ -48,7 +52,11 @@ class AnioDeviceTracker(CoordinatorEntity, TrackerEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
-        info = self.coordinator.data.get(self._device_id, {}).get("info", {})
+        info = (
+            self.coordinator.data.get(self._device_id, {}).get("info", {})
+            if self.coordinator.data
+            else {}
+        )
         device_name = info.get("name") or info.get("deviceName") or f"Anio Watch {self._device_id}"
         model = info.get("model") or "Anio 6"
 
@@ -62,6 +70,8 @@ class AnioDeviceTracker(CoordinatorEntity, TrackerEntity):
     @property
     def latitude(self) -> float | None:
         """Return latitude value of the device."""
+        if not self.coordinator.data:
+            return None
         loc = self.coordinator.data.get(self._device_id, {}).get("location") or {}
         pos = loc.get("position")
         if isinstance(pos, (list, tuple)) and len(pos) >= 2:
@@ -87,6 +97,8 @@ class AnioDeviceTracker(CoordinatorEntity, TrackerEntity):
     @property
     def longitude(self) -> float | None:
         """Return longitude value of the device."""
+        if not self.coordinator.data:
+            return None
         loc = self.coordinator.data.get(self._device_id, {}).get("location") or {}
         pos = loc.get("position")
         if isinstance(pos, (list, tuple)) and len(pos) >= 2:
@@ -112,6 +124,8 @@ class AnioDeviceTracker(CoordinatorEntity, TrackerEntity):
     @property
     def location_accuracy(self) -> int:
         """Return the location accuracy of the device in meters."""
+        if not self.coordinator.data:
+            return 20
         loc = self.coordinator.data.get(self._device_id, {}).get("location") or {}
         return loc.get("accuracy", 20)
 
@@ -123,6 +137,8 @@ class AnioDeviceTracker(CoordinatorEntity, TrackerEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return device tracker attributes."""
+        if not self.coordinator.data:
+            return {}
         loc = self.coordinator.data.get(self._device_id, {}).get("location") or {}
         return {
             "address": loc.get("address"),

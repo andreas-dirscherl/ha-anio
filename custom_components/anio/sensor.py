@@ -30,6 +30,10 @@ async def async_setup_entry(
     entry_data = hass.data[DOMAIN][entry.entry_id]
     coordinator: DataUpdateCoordinator = entry_data["coordinator"]
 
+    if not coordinator.data or not isinstance(coordinator.data, dict):
+        _LOGGER.debug("Keine Koordinatordaten vorhanden für Sensor-Setup")
+        return
+
     entities = []
     for device_id in coordinator.data:
         entities.extend([
@@ -54,7 +58,11 @@ class AnioBaseSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
-        info = self.coordinator.data.get(self._device_id, {}).get("info", {})
+        info = (
+            self.coordinator.data.get(self._device_id, {}).get("info", {})
+            if self.coordinator.data
+            else {}
+        )
         device_name = info.get("name") or info.get("deviceName") or f"Anio Watch {self._device_id}"
         model = info.get("model") or "Anio 6"
 
@@ -82,6 +90,8 @@ class AnioBatterySensor(AnioBaseSensor):
     @property
     def native_value(self) -> int | None:
         """Return native value of battery."""
+        if not self.coordinator.data:
+            return None
         data = self.coordinator.data.get(self._device_id, {})
         loc = data.get("location") or {}
         det = data.get("detail") or {}
@@ -114,6 +124,8 @@ class AnioSignalSensor(AnioBaseSensor):
     @property
     def native_value(self) -> int | None:
         """Return signal strength value."""
+        if not self.coordinator.data:
+            return None
         data = self.coordinator.data.get(self._device_id, {})
         loc = data.get("location") or {}
         det = data.get("detail") or {}
@@ -144,6 +156,8 @@ class AnioTrackingModeSensor(AnioBaseSensor):
     @property
     def native_value(self) -> str | None:
         """Return current tracking mode."""
+        if not self.coordinator.data:
+            return "Standard"
         data = self.coordinator.data.get(self._device_id, {})
         loc = data.get("location") or {}
         det = data.get("detail") or {}
