@@ -56,7 +56,7 @@ class AnioApiClient:
             headers["Authorization"] = f"Bearer {self._access_token}"
         return headers
 
-    def _notify_tokens_updated() -> None:
+    def _notify_tokens_updated(self) -> None:
         """Notify listener if tokens changed."""
         if self._on_tokens_updated and self._access_token:
             try:
